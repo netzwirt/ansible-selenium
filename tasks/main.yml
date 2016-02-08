@@ -1,0 +1,143 @@
+---
+# Tasks file for selenium
+
+- name: install xvfb
+  apt:
+    name: xvfb
+    state: installed
+
+
+- name: create init script for xvfb
+  template:
+    src: xvfb-init.j2
+    dest: /etc/init.d/xvfb
+    mode: 0755
+    owner: root
+    group: root
+
+
+- name: enable xvfb
+  service: 
+    name: xvfb
+    state: started 
+    enabled: yes
+
+
+- name: install required packages
+  apt:
+    name: "{{ item }}"
+  with_items:
+  - x11-xkb-utils 
+  - xfonts-100dpi 
+  - xfonts-75dpi 
+  - xfonts-scalable 
+  - xserver-xorg-core 
+  - libfontconfig1-dev
+  - unzip
+
+
+- name: install firefox
+  apt:
+    name: firefox
+
+
+- name: create chromedriver folder
+  file: 
+    path: "{{ selenium_chromedriver_dir }}" 
+    state: directory 
+    mode: 0755
+
+
+- name: download chromedriver
+  get_url:
+    url: "http://chromedriver.storage.googleapis.com/{{ selenium_chromedriver_version }}/chromedriver_linux64.zip"
+    dest: "{{ selenium_home_dir }}/chromedriver.zip"
+    timeout: 30
+
+
+- name: unzip chromedriver
+  unarchive: 
+    src: "{{ selenium_home_dir }}/chromedriver.zip"
+    dest: "{{ selenium_chromedriver_dir }}"
+    copy: no
+    mode: 0755
+    
+    
+- name: add repository key
+  apt_key: 
+    url: https://dl-ssl.google.com/linux/linux_signing_key.pub 
+    state: present
+
+
+- name: add chrome repository 
+  apt_repository: 
+    repo: 'deb http://dl.google.com/linux/chrome/deb/ stable main' 
+    state: present
+
+
+- name: install chrome stable
+  apt: 
+    pkg: google-chrome-stable 
+    state: present
+
+
+- name: adduser for selenium
+  user:
+    name: "{{ selenium_user }}"
+    home: "{{ selenium_home_dir }}"
+    shell: "/bin/bash"
+    system: yes
+
+
+- name: create logdir 
+  file:
+    path: "/var/log/{{ selenium_user }}/"
+    owner: "{{ selenium_user }}"
+    group: "{{ selenium_user }}"
+    mode: 0755  
+    state: directory  
+
+
+- name: touch logfile
+  file:
+    path: "/var/log/{{ selenium_user }}/selenium.log"
+    owner: "{{ selenium_user }}"
+    group: "{{ selenium_user }}"
+    mode: 0644    
+    state: touch 
+
+
+- name: stat selenium
+  stat: 
+    path: "{{ selenium_home_dir }}/selenium-server-standalone.jar"
+  register: selenium_stat
+
+
+- name: download selenium
+  get_url:
+    url: "http://selenium-release.storage.googleapis.com/{{ selenium_version.split('.')[0] }}.{{ selenium_version.split('.')[1] }}/selenium-server-standalone-{{ selenium_version }}.jar"
+    dest: "{{ selenium_home_dir }}"
+    timeout: 30
+  when: selenium_stat.stat.exists == false
+
+
+- name: rename selenium jar
+  command: mv {{ selenium_home_dir }}/selenium-server-standalone-{{ selenium_version }}.jar {{ selenium_home_dir}}/selenium-server-standalone.jar
+  when: selenium_stat.stat.exists == false
+
+
+- name: install selenium init script
+  template: 
+    src: selenium-init.j2 
+    dest: /etc/init.d/selenium 
+    owner: root 
+    group: root 
+    mode: 0755
+
+
+- name: enable service 
+  service: 
+    name: selenium  
+    state: started 
+    enabled: yes
+
