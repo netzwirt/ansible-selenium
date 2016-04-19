@@ -1,7 +1,7 @@
 #selenium
 
 Setup selenium standalone server.
-
+- https://www.exratione.com/2013/12/angularjs-headless-end-to-end-testing-with-protractor-and-selenium/
 
 #Requirements
 
